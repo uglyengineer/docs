@@ -1,7 +1,7 @@
 ---
 title: CREATE BINDING
 summary: Use of CREATE BINDING in TiDB database.
-category: reference
+aliases: ['/docs/dev/sql-statements/sql-statement-create-binding/']
 ---
 
 # CREATE BINDING

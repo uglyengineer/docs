@@ -1,8 +1,7 @@
 ---
 title: GRANT <privileges> | TiDB SQL Statement Reference
 summary: An overview of the usage of GRANT <privileges> for the TiDB database.
-category: reference
-aliases: ['/docs/dev/reference/sql/statements/grant-privileges/']
+aliases: ['/docs/dev/sql-statements/sql-statement-grant-privileges/','/docs/dev/reference/sql/statements/grant-privileges/']
 ---
 
 # `GRANT <privileges>`
@@ -67,6 +66,7 @@ mysql> SHOW GRANTS FOR 'newuser';
 
 ## See also
 
+* [`GRANT <role>`](/sql-statements/sql-statement-grant-role.md)
 * [`REVOKE <privileges>`](/sql-statements/sql-statement-revoke-privileges.md)
 * [SHOW GRANTS](/sql-statements/sql-statement-show-grants.md)
 * [Privilege Management](/privilege-management.md)
