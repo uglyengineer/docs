@@ -151,14 +151,14 @@ Currently, the optimizer can use the indexed expressions when the expressions ar
 
 ## Invisible index
 
-Invisible indexes are a new feature introduced in MySQL 8.0 that sets an index to invisible so that the optimizer no longer uses this index.
+Invisible indexes are indexes that are ignored by the query optimizer:
 
 ```sql
 CREATE TABLE t1 (c1 INT, c2 INT, UNIQUE(c2));
 CREATE UNIQUE INDEX c1 ON t1 (c1) INVISIBLE;
 ```
 
-For details, see [Invisible index](/sql-statements/sql-statement-alter-index.md#invisible-index)
+For details, see [`ALTER INDEX`](/sql-statements/sql-statement-alter-index.md).
 
 ## Associated session variables
 
@@ -172,6 +172,8 @@ The global variables associated with the `CREATE INDEX` statement are `tidb_ddl_
 
 ## See also
 
+* [Index Selection](/choose-index.md)
+* [Wrong Index Solution](/wrong-index-solution.md)
 * [ADD INDEX](/sql-statements/sql-statement-add-index.md)
 * [DROP INDEX](/sql-statements/sql-statement-drop-index.md)
 * [RENAME INDEX](/sql-statements/sql-statement-rename-index.md)

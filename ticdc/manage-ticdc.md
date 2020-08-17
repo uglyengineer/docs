@@ -8,11 +8,26 @@ aliases: ['/docs/dev/ticdc/manage-ticdc/','/docs/dev/reference/tools/ticdc/manag
 
 This document describes how to deploy a TiCDC cluster and how to manage the TiCDC cluster and replication tasks through the command line tool `cdc cli` and the HTTP interface.
 
-## Deploy TiCDC
+## Deploy and install TiCDC
 
 You can deploy TiCDC using either TiUP or Binary.
 
-### Use TiUP
+### Software and hardware recommendations
+
+In production environments, the recommendations of software and hardware for TiCDC are as follows:
+
+| Linux OS       | Version        |
+| :----------------------- | :----------: |
+| Red Hat Enterprise Linux | 7.3 or later versions   |
+| CentOS                   | 7.3 or later versions   |
+
+| **CPU** | **Memory** | **Disk type** | **Network** | **Number of TiCDC cluster instances (minimum requirements for production environment)** |
+| --- | --- | --- | --- | --- |
+| 16 core+ | 64 GB+ | SSD | 10 Gigabit network card (2 preferred） | 2 |
+
+For more information, see [Software and Hardware Recommendations](/hardware-and-software-requirements.md)
+
+### Deploy and install TiCDC using TiUP
 
 If you use TiUP to deploy TiCDC, you can choose one of the following ways:
 
@@ -215,7 +230,7 @@ In the above command:
 - `resolved-ts`: The largest transaction `TS` in the current `changefeed`. Note that this `TS` has been successfully sent from TiKV to TiCDC.
 - `checkpoint-ts`: The largest transaction `TS` in the current `changefeed` that has been successfully written to the downstream.
 - `admin-job-type`: The status of a `changefeed`:
-    - `0`: The state is normal. It is the initial status.
+    - `0`: The state is normal.
     - `1`: The task is paused. When the task is paused, all replicated `processor`s exit. The configuration and the replication status of the task are retained, so you can resume the task from `checkpiont-ts`.
     - `2`: The task is resumed. The replication task resumes from `checkpoint-ts`.
     - `3`: The task is removed. When the task is removed, all replicated `processor`s are ended, and the configuration information of the replication task is cleared up. Only the replication status is retained for later queries.
@@ -287,28 +302,35 @@ In the above command:
     {{< copyable "shell-regular" >}}
 
     ```shell
-    cdc cli processor query --pd=http://10.0.10.25:2379 --changefeed-id=28c43ffc-2316-4f4f-a70b-d1a7c59ba79f
+    cdc cli processor query --pd=http://10.0.10.25:2379 --changefeed-id=28c43ffc-2316-4f4f-a70b-d1a7c59ba79f --capture-id=b293999a-4168-4988-a4f4-35d9589b226b
     ```
 
     ```
     {
-            "status": {
-                    "table-infos": [
-                            {
-                                    "id": 45,
-                                    "start-ts": 415241823337054209
-                            }
-                    ],
-                    "table-p-lock": null,
-                    "table-c-lock": null,
-                    "admin-job-type": 0
-            },
-            "position": {
-                    "checkpoint-ts": 415241893447467009,
-                    "resolved-ts": 415241893971492865
-            }
+      "status": {
+        "tables": {
+          "56": {    # ID of the replication table, corresponding to tidb_table_id of a table in TiDB
+            "start-ts": 417474117955485702,
+            "mark-table-id": 0  # ID of mark tables in the cyclic replication, corresponding to tidb_table_id of mark tables in TiDB
+          }
+        },
+        "operation": null,
+        "admin-job-type": 0
+      },
+      "position": {
+        "checkpoint-ts": 417474143881789441,
+        "resolved-ts": 417474143881789441,
+        "count": 0
+      }
     }
     ```
+
+    In the command above:
+
+    - `status.tables`: Each key number represents the ID of the replication table, corresponding to `tidb_table_id` of a table in TiDB.
+    - `mark-table-id`: The ID of mark tables in the cyclic replication, corresponding to `tidb_table_id` of mark tables in TiDB.
+    - `resolved-ts`: The largest TSO among the sorted data in the current processor.
+    - `checkpoint-ts`: The largest TSO that has been successfully written to the downstream in the current processor.
 
 ## Use HTTP interface to manage cluster status and data replication task
 
@@ -364,6 +386,31 @@ For nodes other than owner nodes, executing the above command will return the fo
 election: not leader
 ```
 
+### Manually schedule a table to other node
+
+{{< copyable "shell-regular" >}}
+
+```shell
+curl -X POST curl 127.0.0.1:8300/capture/owner/move_table -X POST -d 'cf-id=cf060953-036c-4f31-899f-5afa0ad0c2f9&target-cp-id=6f19a6d9-0f8c-4dc9-b299-3ba7c0f216f5&table-id=49'
+```
+
+Parameter description:
+
+| Parameter name        | Description |
+| :----------- | :--- |
+| `cf-id`        | The ID of the `changefeed` to be scheduled |
+| `target-cp-id` | The ID of the target `capture` |
+| `table-id`     | The ID of the table to be scheduled |
+
+For nodes other than owner nodes, executing the above command will return the following error.
+
+```
+{
+ "status": true,
+ "message": ""
+}
+```
+
 ## Task configuration file
 
 This section introduces the configuration of a replication task.
@@ -379,7 +426,7 @@ case-sensitive = true
 ignore-txn-start-ts = [1, 2]
 
 # Filter rules.
-# Filter syntax: https://github.com/pingcap/tidb-tools/tree/master/pkg/table-filter#syntax.
+# Filter syntax: https://docs.pingcap.com/tidb/stable/table-filter#syntax.
 rules = ['*.*', '!test.*']
 
 [mounter]
@@ -389,6 +436,7 @@ worker-num = 16
 [sink]
 # For the sink of MQ type, you can use dispatchers to configure the event dispatcher.
 # Supports four dispatchers: default, ts, rowid, and table
+# The matching syntax of matcher is the same as the filter rule syntax.
 dispatchers = [
     {matcher = ['test1.*', 'test2.*'], dispatcher = "ts"},
     {matcher = ['test3.*', 'test4.*'], dispatcher = "rowid"},
@@ -435,7 +483,7 @@ To use the cyclic replication feature, you need to configure the following param
 
 To create a cyclic replication task, take the following steps:
 
-1. [Enable the TiCDC component](#deploy-ticdc) in TiDB cluster A, cluster B, and cluster C.
+1. [Enable the TiCDC component](#deploy-and-install-ticdc) in TiDB cluster A, cluster B, and cluster C.
 
     {{< copyable "shell-regular" >}}
 

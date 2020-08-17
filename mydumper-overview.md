@@ -6,6 +6,10 @@ aliases: ['/docs/dev/mydumper-overview/','/docs/dev/reference/tools/mydumper/']
 
 # Mydumper Instructions
 
+> **Warning:**
+>
+> The maintainers have stopped developing new features for Mydumper, and most of its features have been replaced by [Dumpling](/dumpling-overview.md). It is strongly recommended that you switch to Dumpling.
+
 ## What is Mydumper?
 
 [Mydumper](https://github.com/pingcap/mydumper) is a fork project optimized for TiDB. You can use this tool for logical backups of **MySQL** or **TiDB**.
@@ -79,6 +83,10 @@ The following TiDB versions supports the `_tidb_rowid` index:
 - the latest unpublished version (by default)
 
 ## FAQ
+
+### How to resolve the error that occurs when the `--tidb-snapshot` option is used to export data?
+
+In this situation, you need to add a `--skip-tz-utc` option. Otherwise, Mydumper will pre-configure the UTC time zone and convert the time zone when `tidb-snapshot` is configured, which causes this error.
 
 ### How to determine if the Mydumper I am using is the PingCAP optimized version?
 
